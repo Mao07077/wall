@@ -4,8 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
 
 const supabase = createClient(
-  "https://pcrfsuriabfagfxklspc.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjcmZzdXJpYWJmYWdmeGtsc3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTgxMTYsImV4cCI6MjA2NzAzNDExNn0.ErAtfFpOqC_y0Bsfgk6YCqXnRddRMqbOnco4gaKUw5k"
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://pcrfsuriabfagfxklspc.supabase.co",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjcmZzdXJpYWJmYWdmeGtsc3BjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0NTgxMTYsImV4cCI6MjA2NzAzNDExNn0.ErAtfFpOqC_y0Bsfgk6YCqXnRddRMqbOnco4gaKUw5k"
 );
 
 type Post = {
@@ -52,85 +52,87 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    const loadData = async () => {
+      if (!userId) return;
 
-    const fetchPosts = async () => {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("*")
-        .order("timestamp", { ascending: false })
-        .limit(50);
-      if (error) console.error("Fetch posts error:", error.message);
-      else {
-        const postsWithNames = await Promise.all(
-          (data as Post[]).map(async (post) => {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("name")
-              .eq("id", post.author_id)
-              .single();
-            return { ...post, author_name: profile?.name || "Unknown" };
-          })
-        );
-        setPosts(postsWithNames);
-      }
+      const fetchPosts = async () => {
+        const { data, error } = await supabase
+          .from("posts")
+          .select("*")
+          .order("timestamp", { ascending: false })
+          .limit(50);
+        if (error) console.error("Fetch posts error:", error.message);
+        else {
+          const postsWithNames = await Promise.all(
+            (data as Post[]).map(async (post) => {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("name")
+                .eq("id", post.author_id)
+                .single();
+              return { ...post, author_name: profile?.name || "Unknown" };
+            })
+          );
+          setPosts(postsWithNames);
+        }
+      };
+
+      const fetchProfile = async () => {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single();
+        if (error && error.code !== "PGRST116") {
+          console.error("Profile fetch error:", error.message);
+          return;
+        }
+        if (!data) {
+          const { error: upsertError } = await supabase.from("profiles").upsert({
+            id: userId,
+            name: "Greg Wientjes",
+            details: ",,",
+            photo_url: "/placeholder.jpg",
+            updated_at: new Date(),
+          });
+          if (upsertError) console.error("Profile upsert error:", upsertError.message);
+        } else {
+          setProfileName(data.name || "Greg Wientjes");
+          const detailsArray = data.details?.split(",") || ["", "", ""];
+          setProfileDetails({
+            information: [detailsArray[0] || ""],
+            networks: [detailsArray[1] || ""],
+            currentCity: [detailsArray[2] || ""],
+          });
+          setProfilePhoto(data.photo_url || "/placeholder.jpg");
+        }
+      };
+
+      await Promise.all([fetchPosts(), fetchProfile()]);
+
+      const subscription = supabase
+        .channel("public:posts")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, (payload) => {
+          const newPost = payload.new as Post;
+          fetchAuthorName(newPost.author_id).then((name) =>
+            setPosts((prev) => [{ ...newPost, author_name: name }, ...prev].slice(0, 50))
+          );
+        })
+        .subscribe();
+
+      const fetchAuthorName = async (authorId: string) => {
+        const { data } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", authorId)
+          .single();
+        return data?.name || "Unknown";
+      };
+
+      return () => subscription.unsubscribe();
     };
 
-    const fetchProfile = async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-      if (error && error.code !== "PGRST116") {
-        console.error("Profile fetch error:", error.message);
-        return;
-      }
-      if (!data) {
-        const { error: upsertError } = await supabase.from("profiles").upsert({
-          id: userId,
-          name: "Greg Wientjes",
-          details: ",,",
-          photo_url: "/placeholder.jpg",
-          updated_at: new Date(),
-        });
-        if (upsertError) console.error("Profile upsert error:", upsertError.message);
-      } else {
-        setProfileName(data.name || "Greg Wientjes");
-        // Parse details into structured object with empty defaults
-        const detailsArray = data.details?.split(",") || ["", "", ""];
-        setProfileDetails({
-          information: [detailsArray[0] || ""],
-          networks: [detailsArray[1] || ""],
-          currentCity: [detailsArray[2] || ""],
-        });
-        setProfilePhoto(data.photo_url || "/placeholder.jpg");
-      }
-    };
-
-    fetchPosts();
-    fetchProfile();
-
-    const subscription = supabase
-      .channel("public:posts")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, (payload) => {
-        const newPost = payload.new as Post;
-        fetchAuthorName(newPost.author_id).then((name) =>
-          setPosts((prev) => [{ ...newPost, author_name: name }, ...prev].slice(0, 50))
-        );
-      })
-      .subscribe();
-
-    const fetchAuthorName = async (authorId: string) => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("id", authorId)
-        .single();
-      return data?.name || "Unknown";
-    };
-
-    return () => subscription.unsubscribe();
+    loadData();
   }, [userId]);
 
   const handleShare = async () => {
@@ -210,14 +212,14 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-100 to-white">
       {/* Header */}
-      <header className="bg-blue-600 text-white p-4 shadow-lg text-center">
+      <header className="bg-blue-600 text-white p-4 shadow-lg text-center fixed w-full z-10">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold"><strong>Wall</strong></h1>
       </header>
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* Main Content with Adjusted Padding for Fixed Header */}
+      <div className="flex flex-1 mt-16"> {/* Offset for fixed header */}
         {/* Profile Sidebar */}
-        <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-r shadow-lg sticky top-0 h-full overflow-y-auto">
+        <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-r shadow-lg sticky top-16 h-full overflow-y-auto">
           <div className="text-center">
             <img
               src={profilePhoto || "/placeholder.jpg"}
