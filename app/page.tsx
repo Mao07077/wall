@@ -24,9 +24,9 @@ export default function Home() {
   const [userId] = useState("public-profile"); // Use a fixed public ID for shared profile
   const [profileName, setProfileName] = useState("Greg Wientjes");
   const [profileDetails, setProfileDetails] = useState({
-    information: [""],
-    networks: [""],
-    currentCity: [""],
+    information: "",
+    networks: "",
+    currentCity: "",
   });
   const [profilePhoto, setProfilePhoto] = useState<string | null>("/placeholder.jpg");
   const [isEditing, setIsEditing] = useState(false);
@@ -71,18 +71,19 @@ export default function Home() {
           const { error: upsertError } = await supabase.from("profiles").upsert({
             id: userId,
             name: "Greg Wientjes",
-            details: ",,",
+            information: "",
+            networks: "",
+            current_city: "",
             photo_url: "/placeholder.jpg",
             updated_at: new Date(),
           });
           if (upsertError) console.error("Profile upsert error:", upsertError.message);
         } else {
           setProfileName(data.name || "Greg Wientjes");
-          const detailsArray = data.details?.split(",") || ["", "", ""];
           setProfileDetails({
-            information: [detailsArray[0] || ""],
-            networks: [detailsArray[1] || ""],
-            currentCity: [detailsArray[2] || ""],
+            information: data.information || "",
+            networks: data.networks || "",
+            currentCity: data.current_city || "",
           });
           setProfilePhoto(data.photo_url || "/placeholder.jpg");
         }
@@ -95,11 +96,10 @@ export default function Home() {
         .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` }, (payload) => {
           const updatedProfile = payload.new;
           setProfileName(updatedProfile.name || "Greg Wientjes");
-          const detailsArray = updatedProfile.details?.split(",") || ["", "", ""];
           setProfileDetails({
-            information: [detailsArray[0] || ""],
-            networks: [detailsArray[1] || ""],
-            currentCity: [detailsArray[2] || ""],
+            information: updatedProfile.information || "",
+            networks: updatedProfile.networks || "",
+            currentCity: updatedProfile.current_city || "",
           });
           setProfilePhoto(updatedProfile.photo_url || "/placeholder.jpg");
         })
@@ -156,11 +156,9 @@ export default function Home() {
         const profileData = {
           id: userId,
           name: profileName,
-          details: [
-            ...profileDetails.information,
-            ...profileDetails.networks,
-            ...profileDetails.currentCity,
-          ].join(","),
+          information: profileDetails.information,
+          networks: profileDetails.networks,
+          current_city: profileDetails.currentCity,
           photo_url: publicUrlData.publicUrl,
           updated_at: new Date(),
         };
@@ -176,11 +174,9 @@ export default function Home() {
     const profileData = {
       id: userId,
       name: profileName,
-      details: [
-        ...profileDetails.information,
-        ...profileDetails.networks,
-        ...profileDetails.currentCity,
-      ].join(","),
+      information: profileDetails.information,
+      networks: profileDetails.networks,
+      current_city: profileDetails.currentCity,
       photo_url: profilePhoto,
       updated_at: new Date(),
     };
@@ -217,15 +213,9 @@ export default function Home() {
             <h2 className="text-xl sm:text-2xl md:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">{profileName}</h2>
             <p className="text-gray-600 mb-1 sm:mb-2"><strong>Wall</strong></p>
             <ul className="space-y-1 sm:space-y-2 mb-2 sm:mb-4">
-              {profileDetails.information.map((info, index) => (
-                <li key={index} className="text-sm sm:text-base md:text-base text-gray-500"><strong>Information:</strong> {info}</li>
-              ))}
-              {profileDetails.networks.map((network, index) => (
-                <li key={index} className="text-sm sm:text-base md:text-base text-gray-500"><strong>Networks:</strong> {network}</li>
-              ))}
-              {profileDetails.currentCity.map((city, index) => (
-                <li key={index} className="text-sm sm:text-base md:text-base text-gray-500"><strong>Current City:</strong> {city}</li>
-              ))}
+              <li className="text-sm sm:text-base md:text-base text-gray-500"><strong>Information:</strong> {profileDetails.information}</li>
+              <li className="text-sm sm:text-base md:text-base text-gray-500"><strong>Networks:</strong> {profileDetails.networks}</li>
+              <li className="text-sm sm:text-base md:text-base text-gray-500"><strong>Current City:</strong> {profileDetails.currentCity}</li>
             </ul>
             <label className="cursor-pointer text-sm sm:text-base text-blue-500 mb-2 block">
               Change Photo
@@ -246,21 +236,31 @@ export default function Home() {
                   placeholder="Enter your name"
                 />
                 <div className="mb-2">
+                  <label className="block text-sm sm:text-base font-medium text-gray-700">Information</label>
+                  <input
+                    type="text"
+                    value={profileDetails.information}
+                    onChange={(e) => setProfileDetails((prev) => ({ ...prev, information: e.target.value }))}
+                    className="w-full p-2 sm:p-2 md:p-2 border rounded mb-2 bg-gray-50 text-sm sm:text-base"
+                    placeholder="Enter information"
+                  />
+                </div>
+                <div className="mb-2">
                   <label className="block text-sm sm:text-base font-medium text-gray-700">Networks</label>
                   <input
                     type="text"
-                    value={profileDetails.networks[0] || ""}
-                    onChange={(e) => setProfileDetails((prev) => ({ ...prev, networks: [e.target.value] }))}
+                    value={profileDetails.networks}
+                    onChange={(e) => setProfileDetails((prev) => ({ ...prev, networks: e.target.value }))}
                     className="w-full p-2 sm:p-2 md:p-2 border rounded mb-2 bg-gray-50 text-sm sm:text-base"
                     placeholder="e.g., LinkedIn, Twitter"
                   />
                 </div>
                 <div className="mb-2">
-                  <label className="block text-sm sm:text-base font-medium text-gray-700">Current City</label>
+                  <label className="block text-sm text-base font-medium text-gray-700">Current City</label>
                   <input
                     type="text"
-                    value={profileDetails.currentCity[0] || ""}
-                    onChange={(e) => setProfileDetails((prev) => ({ ...prev, currentCity: [e.target.value] }))}
+                    value={profileDetails.currentCity}
+                    onChange={(e) => setProfileDetails((prev) => ({ ...prev, currentCity: e.target.value }))}
                     className="w-full p-2 sm:p-2 md:p-2 border rounded mb-2 bg-gray-50 text-sm sm:text-base"
                     placeholder="e.g., Palo Alto, CA"
                   />
