@@ -17,39 +17,25 @@ type Post = {
   author_name?: string;
 };
 
-// Helper to get or create a persistent userId
-const getOrCreateUserId = () => {
-  if (typeof window !== "undefined") {
-    let userId = localStorage.getItem("userId");
-    if (!userId) {
-      userId = uuidv4();
-      localStorage.setItem("userId", userId);
-    }
-    return userId;
-  }
-  return uuidv4(); // Fallback for SSR
+type ProfileDetails = {
+  information: string[];
+  networks: string[];
+  currentCity: string[];
 };
 
 export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // Profile state with structured details
+  const [userId] = useState<string>(uuidv4()); // Generate a new userId each session
   const [profileName, setProfileName] = useState("Greg Wientjes");
-  const [profileDetails, setProfileDetails] = useState({
+  const [profileDetails, setProfileDetails] = useState<ProfileDetails>({
     information: [""],
     networks: [""],
     currentCity: [""],
   });
   const [profilePhoto, setProfilePhoto] = useState<string | null>("/placeholder.jpg");
   const [isEditing, setIsEditing] = useState(false);
-
-  // Set userId on client-side mount
-  useEffect(() => {
-    setUserId(getOrCreateUserId());
-  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -177,7 +163,12 @@ export default function Home() {
       if (error) console.error("Profile photo upload error:", error.message);
       else {
         const { data: publicUrlData } = supabase.storage.from("wall-photos").getPublicUrl(filePath);
-        setProfilePhoto(publicUrlData.publicUrl);
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({ photo_url: publicUrlData.publicUrl, updated_at: new Date() })
+          .eq("id", userId);
+        if (updateError) console.error("Profile photo update error:", updateError.message);
+        else setProfilePhoto(publicUrlData.publicUrl);
       }
     }
   };
@@ -217,7 +208,7 @@ export default function Home() {
       </header>
 
       {/* Main Content with Adjusted Padding for Fixed Header */}
-      <div className="flex flex-1 mt-16"> {/* Offset for fixed header */}
+      <div className="flex flex-1 mt-16">
         {/* Profile Sidebar */}
         <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-r shadow-lg sticky top-16 h-full overflow-y-auto">
           <div className="text-center">
