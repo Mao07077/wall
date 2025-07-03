@@ -208,36 +208,36 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-100 to-white overflow-hidden">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-100 to-white">
       {/* Header */}
       <header className="bg-blue-600 text-white p-4 shadow-lg text-center">
-        <h1 className="text-3xl font-bold"><strong>Wall</strong></h1>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold"><strong>Wall</strong></h1>
       </header>
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Profile Sidebar */}
-        <div className="w-1/4 bg-white p-6 border-r shadow-lg sticky top-0 h-full overflow-y-auto">
+        <div className="w-full md:w-1/4 bg-white p-4 md:p-6 border-r shadow-lg sticky top-0 h-full overflow-y-auto">
           <div className="text-center">
             <img
               src={profilePhoto || "/placeholder.jpg"}
               alt="Profile"
-              className="w-48 h-48 rounded-full mx-auto mb-4 object-cover shadow-md border-4 border-blue-200"
+              className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full mx-auto mb-2 sm:mb-4 object-cover shadow-md border-4 border-blue-200"
             />
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">{profileName}</h2>
-            <p className="text-gray-600 mb-4"><strong>Wall</strong></p>
-            <ul className="space-y-2 mb-4">
+            <h2 className="text-xl sm:text-2xl md:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">{profileName}</h2>
+            <p className="text-gray-600 mb-1 sm:mb-2"><strong>Wall</strong></p>
+            <ul className="space-y-1 sm:space-y-2 mb-2 sm:mb-4">
               {profileDetails.information.map((info, index) => (
-                <li key={index} className="text-gray-500"><strong>Information:</strong> {info}</li>
+                <li key={index} className="text-sm sm:text-base md:text-base text-gray-500"><strong>Information:</strong> {info}</li>
               ))}
               {profileDetails.networks.map((network, index) => (
-                <li key={index} className="text-gray-500"><strong>Networks:</strong> {network}</li>
+                <li key={index} className="text-sm sm:text-base md:text-base text-gray-500"><strong>Networks:</strong> {network}</li>
               ))}
               {profileDetails.currentCity.map((city, index) => (
-                <li key={index} className="text-gray-500"><strong>Current City:</strong> {city}</li>
+                <li key={index} className="text-sm sm:text-base md:text-base text-gray-500"><strong>Current City:</strong> {city}</li>
               ))}
             </ul>
-            <label className="cursor-pointer text-sm text-blue-500 mb-2 block">
+            <label className="cursor-pointer text-sm sm:text-base text-blue-500 mb-2 block">
               Change Photo
               <input
                 type="file"
@@ -252,31 +252,31 @@ export default function Home() {
                   type="text"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
-                  className="w-full p-2 border rounded mb-2 text-center bg-gray-50"
+                  className="w-full p-2 sm:p-2 md:p-2 border rounded mb-2 text-center bg-gray-50 text-sm sm:text-base"
                   placeholder="Enter your name"
                 />
                 <div className="mb-2">
-                  <label className="block text-sm font-medium text-gray-700">Networks</label>
+                  <label className="block text-sm sm:text-base font-medium text-gray-700">Networks</label>
                   <input
                     type="text"
                     value={profileDetails.networks[0] || ""}
                     onChange={(e) => setProfileDetails((prev) => ({ ...prev, networks: [e.target.value] }))}
-                    className="w-full p-2 border rounded mb-2 bg-gray-50"
+                    className="w-full p-2 sm:p-2 md:p-2 border rounded mb-2 bg-gray-50 text-sm sm:text-base"
                     placeholder="e.g., LinkedIn, Twitter"
                   />
                 </div>
                 <div className="mb-2">
-                  <label className="block text-sm font-medium text-gray-700">Current City</label>
+                  <label className="block text-sm sm:text-base font-medium text-gray-700">Current City</label>
                   <input
                     type="text"
                     value={profileDetails.currentCity[0] || ""}
                     onChange={(e) => setProfileDetails((prev) => ({ ...prev, currentCity: [e.target.value] }))}
-                    className="w-full p-2 border rounded mb-2 bg-gray-50"
+                    className="w-full p-2 sm:p-2 md:p-2 border rounded mb-2 bg-gray-50 text-sm sm:text-base"
                     placeholder="e.g., Palo Alto, CA"
                   />
                 </div>
                 <button
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition w-full"
+                  className="bg-blue-600 text-white px-4 py-1 sm:py-2 rounded hover:bg-blue-700 transition w-full text-sm sm:text-base"
                   onClick={handleSaveProfile}
                 >
                   Save
@@ -284,7 +284,7 @@ export default function Home() {
               </>
             ) : (
               <button
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition w-full"
+                className="bg-blue-600 text-white px-4 py-1 sm:py-2 rounded hover:bg-blue-700 transition w-full text-sm sm:text-base"
                 onClick={() => setIsEditing(true)}
               >
                 Edit Profile
@@ -294,22 +294,22 @@ export default function Home() {
         </div>
 
         {/* Main Feed */}
-        <div className="w-3/4 p-6 overflow-y-auto">
-          <div className="bg-white p-6 border rounded-lg shadow-md mb-6">
-            <div className="flex items-center mb-4">
+        <div className="w-full md:w-3/4 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white p-2 sm:p-4 md:p-6 border rounded-lg shadow-md mb-2 sm:mb-4">
+            <div className="flex flex-col sm:flex-row items-center mb-2 sm:mb-4">
               <textarea
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
                 placeholder="What's on your mind?"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 maxLength={280}
               />
             </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <label className="cursor-pointer flex items-center text-blue-500 hover:text-blue-700">
+            <div className="flex flex-col sm:flex-row justify-between items-center">
+              <div className="mb-2 sm:mb-0">
+                <label className="cursor-pointer flex items-center text-blue-500 hover:text-blue-700 text-sm sm:text-base">
                   <svg
-                    className="w-5 h-5 mr-2"
+                    className="w-4 sm:w-5 h-4 sm:h-5 mr-1 sm:mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -329,12 +329,12 @@ export default function Home() {
                     onChange={handlePhotoUpload}
                   />
                 </label>
-                <span className="text-sm text-gray-500 ml-2">
+                <span className="text-sm sm:text-base text-gray-500 ml-1 sm:ml-2">
                   {280 - message.length} characters remaining
                 </span>
               </div>
               <button
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                className="bg-blue-600 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-lg hover:bg-blue-700 transition text-sm sm:text-base"
                 onClick={handleShare}
               >
                 Share
@@ -344,17 +344,17 @@ export default function Home() {
               <img
                 src={photo}
                 alt="Uploaded"
-                className="mt-4 w-64 h-64 object-cover rounded-lg shadow-md"
+                className="mt-2 sm:mt-4 w-32 sm:w-48 md:w-64 h-32 sm:h-48 md:h-64 object-cover rounded-lg shadow-md"
               />
             )}
           </div>
-          <div className="space-y-6">
+          <div className="space-y-2 sm:space-y-4">
             {posts.map((post) => (
               <div
                 key={post.id}
-                className="bg-white p-4 border rounded-lg shadow-md hover:shadow-lg transition"
+                className="bg-white p-2 sm:p-4 border rounded-lg shadow-md hover:shadow-lg transition"
               >
-                <p className="text-gray-800">
+                <p className="text-gray-800 text-sm sm:text-base">
                   <strong className="text-blue-600">{post.author_name}</strong>{" "}
                   {post.message}
                 </p>
@@ -362,10 +362,10 @@ export default function Home() {
                   <img
                     src={post.photo_url}
                     alt="Post"
-                    className="mt-4 w-64 h-64 object-cover rounded-lg shadow-md"
+                    className="mt-2 sm:mt-4 w-32 sm:w-48 md:w-64 h-32 sm:h-48 md:h-64 object-cover rounded-lg shadow-md"
                   />
                 )}
-                <span className="text-sm text-gray-500 block mt-2">
+                <span className="text-sm text-gray-500 block mt-1 sm:mt-2">
                   {new Date(post.timestamp).toLocaleTimeString()} |{" "}
                   {new Date(post.timestamp).toLocaleDateString()}
                 </span>
