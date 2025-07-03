@@ -17,19 +17,13 @@ type Post = {
   author_name?: string;
 };
 
-type ProfileDetails = {
-  information: string[];
-  networks: string[];
-  currentCity: string[];
-};
-
 export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [userId] = useState<string>(uuidv4()); // Generate a new userId each session
+  const [userId] = useState("public-profile"); // Use a fixed public ID for shared profile
   const [profileName, setProfileName] = useState("Greg Wientjes");
-  const [profileDetails, setProfileDetails] = useState<ProfileDetails>({
+  const [profileDetails, setProfileDetails] = useState({
     information: [""],
     networks: [""],
     currentCity: [""],
@@ -97,23 +91,19 @@ export default function Home() {
       await Promise.all([fetchPosts(), fetchProfile()]);
 
       const subscription = supabase
-        .channel("public:posts")
-        .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, (payload) => {
-          const newPost = payload.new as Post;
-          fetchAuthorName(newPost.author_id).then((name) =>
-            setPosts((prev) => [{ ...newPost, author_name: name }, ...prev].slice(0, 50))
-          );
+        .channel("public:profiles")
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${userId}` }, (payload) => {
+          const updatedProfile = payload.new;
+          setProfileName(updatedProfile.name || "Greg Wientjes");
+          const detailsArray = updatedProfile.details?.split(",") || ["", "", ""];
+          setProfileDetails({
+            information: [detailsArray[0] || ""],
+            networks: [detailsArray[1] || ""],
+            currentCity: [detailsArray[2] || ""],
+          });
+          setProfilePhoto(updatedProfile.photo_url || "/placeholder.jpg");
         })
         .subscribe();
-
-      const fetchAuthorName = async (authorId: string) => {
-        const { data } = await supabase
-          .from("profiles")
-          .select("name")
-          .eq("id", authorId)
-          .single();
-        return data?.name || "Unknown";
-      };
 
       return () => subscription.unsubscribe();
     };
@@ -163,10 +153,18 @@ export default function Home() {
       if (error) console.error("Profile photo upload error:", error.message);
       else {
         const { data: publicUrlData } = supabase.storage.from("wall-photos").getPublicUrl(filePath);
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({ photo_url: publicUrlData.publicUrl, updated_at: new Date() })
-          .eq("id", userId);
+        const profileData = {
+          id: userId,
+          name: profileName,
+          details: [
+            ...profileDetails.information,
+            ...profileDetails.networks,
+            ...profileDetails.currentCity,
+          ].join(","),
+          photo_url: publicUrlData.publicUrl,
+          updated_at: new Date(),
+        };
+        const { error: updateError } = await supabase.from("profiles").upsert(profileData);
         if (updateError) console.error("Profile photo update error:", updateError.message);
         else setProfilePhoto(publicUrlData.publicUrl);
       }
@@ -195,7 +193,6 @@ export default function Home() {
         details: error.details,
       });
     } else {
-      console.log("Profile saved successfully:", profileData);
       setIsEditing(false);
     }
   };
