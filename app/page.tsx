@@ -21,7 +21,11 @@ export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [userId] = useState("public-profile"); // Use a fixed public ID for shared profile
+  const [userId] = useState(() => {
+    // Generate a consistent UUID for the public profile
+    // Using a deterministic approach so it's always the same
+    return "550e8400-e29b-41d4-a716-446655440000"; // Fixed UUID for public profile
+  });
   const [profileName, setProfileName] = useState("Greg Wientjes");
   const [profileDetails, setProfileDetails] = useState({
     information: "",
@@ -34,6 +38,20 @@ export default function Home() {
   useEffect(() => {
     const loadData = async () => {
       if (!userId) return;
+
+      // Test Supabase connection
+      try {
+        const { data, error } = await supabase.from("posts").select("count").limit(1);
+        if (error) {
+          console.error("Supabase connection test failed:", error);
+          alert("Database connection failed. Please check your Supabase configuration.");
+          return;
+        }
+        console.log("Supabase connection successful");
+      } catch (err) {
+        console.error("Failed to connect to Supabase:", err);
+        return;
+      }
 
       const fetchPosts = async () => {
         const { data, error } = await supabase
@@ -112,33 +130,96 @@ export default function Home() {
   }, [userId]);
 
   const handleShare = async () => {
-    if (!userId || (message.length === 0 && !photo)) return;
-    const postData = {
-      id: uuidv4(),
-      author_id: userId,
-      message,
-      photo_url: photo || undefined,
-      timestamp: new Date(),
-    };
-    const { error } = await supabase.from("posts").insert(postData);
-    if (error) console.error("Post insert error:", error.message);
-    else {
-      setMessage("");
-      setPhoto(null);
+    if (!userId || (message.trim().length === 0 && !photo)) {
+      alert("Please enter a message or add a photo before posting.");
+      return;
+    }
+    
+    try {
+      const postData = {
+        id: uuidv4(),
+        author_id: userId,
+        message: message.trim(),
+        photo_url: photo || null,
+        timestamp: new Date().toISOString(),
+      };
+      
+      console.log("Attempting to insert post:", postData);
+      
+      const { data, error } = await supabase.from("posts").insert(postData);
+      
+      if (error) {
+        console.error("Post insert error:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        alert(`Failed to post: ${error.message}`);
+      } else {
+        console.log("Post inserted successfully:", data);
+        setMessage("");
+        setPhoto(null);
+        // Refresh posts immediately
+        const { data: newPosts, error: fetchError } = await supabase
+          .from("posts")
+          .select("*")
+          .order("timestamp", { ascending: false })
+          .limit(50);
+          
+        if (!fetchError && newPosts) {
+          const postsWithNames = await Promise.all(
+            (newPosts as Post[]).map(async (post) => {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("name")
+                .eq("id", post.author_id)
+                .single();
+              return { ...post, author_name: profile?.name || "Unknown" };
+            })
+          );
+          setPosts(postsWithNames);
+        }
+      }
+    } catch (err) {
+      console.error("Unexpected error while posting:", err);
+      alert("An unexpected error occurred. Please try again.");
     }
   };
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const filePath = `public/${uuidv4()}-${file.name}`;
-      const { data, error } = await supabase.storage
-        .from("wall-photos")
-        .upload(filePath, file);
-      if (error) console.error("Photo upload error:", error.message);
-      else {
-        const { data: publicUrlData } = supabase.storage.from("wall-photos").getPublicUrl(filePath);
-        setPhoto(publicUrlData.publicUrl);
+      try {
+        // Check file size (limit to 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert("File size must be less than 5MB");
+          return;
+        }
+        
+        const filePath = `public/${uuidv4()}-${file.name}`;
+        console.log("Uploading photo to:", filePath);
+        
+        const { data, error } = await supabase.storage
+          .from("wall-photos")
+          .upload(filePath, file);
+          
+        if (error) {
+          console.error("Photo upload error:", {
+            message: error.message
+          });
+          alert(`Photo upload failed: ${error.message}`);
+        } else {
+          console.log("Photo uploaded successfully:", data);
+          const { data: publicUrlData } = supabase.storage
+            .from("wall-photos")
+            .getPublicUrl(filePath);
+          setPhoto(publicUrlData.publicUrl);
+          console.log("Photo URL set:", publicUrlData.publicUrl);
+        }
+      } catch (err) {
+        console.error("Unexpected error during photo upload:", err);
+        alert("Failed to upload photo. Please try again.");
       }
     }
   };
